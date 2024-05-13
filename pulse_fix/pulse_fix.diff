@@ -1,0 +1,13 @@
+--- /home/nutanix/serviceability/bin/cron_serviceability.py	2024-05-13 15:48:31.580968269 +0000
++++ /tmp/cron_serviceability.py	2024-05-13 15:48:40.000000000 +0000
+@@ -604,9 +604,7 @@
+   else:
+     stop_reverse_ssh_tunnel(mode)
+ 
+-  if ((svccfg.enable_default_nutanix_email() or
+-       svccfg.enable_default_email_alert_contact_list()) and
+-      mode in ["leader"] and (not utils.smtp_server())):
++  if (mode in ["leader"] and (not utils.smtp_server())):
+     confirm_smtp_tunnel()
+   else:
+     stop_smtp_tunnel(mode)
