@@ -25,7 +25,10 @@ do
 	filename=$(basename -- "$i")
 	filename="${filename%.*}"
 
+        # Generate our Key Name
 	KEYNAME="${filename}_${DATECODE}"
+
+        # Add the key, note if a key already exists, we will continue
 	echo "Adding Key ${KEYNAME}"
 	ncli cluster add-public-key name=${KEYNAME} file-path=${i}
 done
