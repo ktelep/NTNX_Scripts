@@ -5,6 +5,10 @@
 # This is useful when rotating a number of keys, note it does not REMOVE 
 # any keys from the configuration
 #
+#   ncli cluster ls-public-keys -- Show you currently install keys
+#   ncli cluster rm-public-key  -- Remove a public key
+#   ncli cluster add-public-key -- Add a public key$a
+#
 # Keys can be any compatible type and length
 # A datecode is added to each name given
 # 
