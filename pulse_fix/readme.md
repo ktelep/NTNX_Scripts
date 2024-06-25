@@ -8,6 +8,13 @@ Patch process:
 
 ```
 nutanix@NTNX-94e510df-A-CVM$ ncli pulse-config ls
+
+    Status                    : Enabled
+    Enable Default Nutanix... : false
+    Default Nutanix Email     : no-email@nutanix.com
+    Email Contacts            : 
+    Verbosity                 : BASIC_COREDUMP
+    SMTP Tunnel Status        : disabled       <--------
 ```
 
 4.  Execute the following command to patch the serviceability script
