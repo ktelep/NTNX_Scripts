@@ -2,9 +2,9 @@
 
 Patch process:
 
-1.  Copy the .diff file in this repo to each CVM via SCP or WinSCP to /home/nutanix
+1.  Copy the appropriate .diff file in this repo to each CVM via SCP or WinSCP to /home/nutanix (Note, the patch file is different for 6.8)
 2.  Open an ssh session to the CVM as the 'nutanix' user
-3. Confirm the Pulse SMTP is failed or disabled
+3.  Confirm the Pulse SMTP is failed or disabled
 
 ```
 nutanix@NTNX-94e510df-A-CVM$ ncli pulse-config ls

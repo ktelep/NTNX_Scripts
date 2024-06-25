@@ -1,0 +1,13 @@
+--- /tmp/cron_serviceability.py.orig	2024-06-25 14:09:38.000000000 +0000
++++ cron_serviceability.py	2024-06-25 14:09:51.184226342 +0000
+@@ -575,9 +575,7 @@
+   else:
+     stop_reverse_ssh_tunnel(isZkLeader)
+ 
+-  if ((svccfg.enable_default_nutanix_email() or
+-       svccfg.enable_default_email_alert_contact_list()) and
+-      isZkLeader and (not utils.smtp_server())):
++  if (isZkLeader and (not utils.smtp_server())):
+     confirm_smtp_tunnel()
+   else:
+     stop_smtp_tunnel(isZkLeader)
