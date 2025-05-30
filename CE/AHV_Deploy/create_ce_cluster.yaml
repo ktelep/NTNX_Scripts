@@ -1,0 +1,200 @@
+- name: Deploy Community Edition 2.1 on AHV
+  hosts: localhost
+  gather_facts: false
+  module_defaults:
+    group/nutanix.ncp.ntnx:
+      nutanix_host: "192.168.68.105"
+      nutanix_username: "admin"
+      nutanix_password: "nutanix/4u"
+      validate_certs: false
+  tasks:
+    - name: Setting Variables
+      ansible.builtin.set_fact:
+        cluster_name: "Physical2"
+        cluster_ahv_username: "root"
+        cluster_ahv_password: "nutanix/4u"
+        ce_node:
+          ce_vm_name: "vCluster5"
+          ce_cluster_name: "vCluster5"
+          config:
+            ce_sockets: 4
+            ce_cores_per_socket: 2
+            ce_memory: 64
+          networking:
+            ce_cvm_ip: "192.168.68.185"
+            ce_ahv_ip: "192.168.68.186"
+            ce_subnet_mask: "255.255.254.0"
+            ce_dfgw_ip: "192.168.68.1"
+          storage:
+            hyp_disk: 64
+            cvm_disk: 200
+            data_disk: 1000
+        ce_image_name: "CE21_Final.iso"
+        host_storage_pool: "default-container-19625143289879"
+        host_subnet: "Primary"
+
+    - name: Convert IPs to Keystrokes
+      ansible.builtin.set_fact:
+        ce_cvm_keys: "{{ ce_node.networking.ce_cvm_ip | regex_replace('(.)','KEY_\\1 ') | regex_replace('\\.','DOT') | trim | split (' ') }}"
+        ce_ahv_keys: "{{ ce_node.networking.ce_ahv_ip | regex_replace('(.)','KEY_\\1 ') | regex_replace('\\.','DOT') | trim | split (' ') }}"
+        ce_subnet_keys: "{{ ce_node.networking.ce_subnet_mask | regex_replace('(.)','KEY_\\1 ') | regex_replace('\\.','DOT') | trim | split (' ') }}"
+        ce_dfgw_keys: "{{ ce_node.networking.ce_dfgw_ip | regex_replace('(.)','KEY_\\1 ') | regex_replace('\\.','DOT') | trim | split (' ') }}"
+        ce_gui_start: "{{ 'KEY_TAB KEY_TAB' | trim | split(' ') }}"
+        key_tab:
+          - "KEY_TAB"
+        key_enter:
+          - "KEY_ENTER"
+        key_pagedown:
+          - "KEY_PAGEDOWN"
+
+    - name: Create Keycodes for EULA
+      ansible.builtin.set_fact:
+         ce_eula: "{{ ce_eula | default([]) + ['KEY_PAGEDOWN'] }}"
+      loop: "{{ range(0,25) | list  }}"
+
+    - name: Identify Image
+      nutanix.ncp.ntnx_images_info:
+        filter:
+          name: "{{ ce_image_name }}"
+      register: image_info
+
+    - name: Setting Image fact
+      ansible.builtin.set_fact:
+        image_ext_id: "{{ image_info.response.entities[0].metadata.uuid }}"
+
+    - name: Getting external ID of PE clusters
+      nutanix.ncp.ntnx_clusters_info_v2:
+        filter: "name eq '{{ cluster_name }}'"
+      register: peid
+
+    - name: Setting PEID fact
+      ansible.builtin.set_fact:
+        cluster_peid: "{{ peid.response[0].ext_id }}"
+
+    - name: Getting Storage Container
+      nutanix.ncp.ntnx_storage_containers_info_v2:
+        filter: "name eq '{{ host_storage_pool }}' and clusterExtId eq '{{ cluster_peid }}'"
+      register: container
+
+    - name: Setting Container fact
+      ansible.builtin.set_fact:
+        cluster_container_id: "{{ container.response[0].container_ext_id }}"
+
+    - name: Getting Subnet Info
+      nutanix.ncp.ntnx_subnets_info_v2:
+        filter: "name eq '{{ host_subnet }}' and clusterReference eq '{{ cluster_peid }}'"
+      register: subnet_info
+
+    - name: Setting Subnet fact
+      ansible.builtin.set_fact:
+        subnet_id: "{{ subnet_info.response[0].ext_id }}"
+
+    - name: Create CE VM
+      nutanix.ncp.ntnx_vms_v2:
+        name: "{{ ce_node.ce_vm_name }}"
+        description: "CE virtual node"
+        cluster:
+          ext_id: "{{ cluster_peid }}"
+        num_sockets: "{{ ce_node.config.ce_sockets }}"
+        num_cores_per_socket: "{{ ce_node.config.ce_cores_per_socket }}"
+        memory_size_bytes: "{{ ce_node.config.ce_memory * 1024 * 1024 * 1024}}"
+        is_cpu_passthrough_enabled: true
+        nics:
+          - network_info:
+              subnet:
+                ext_id: "{{ subnet_id }}"
+        cd_roms:
+          - disk_address:
+              bus_type: IDE
+            backing_info:
+              data_source:
+                reference:
+                  image_reference:
+                    image_ext_id: "{{ image_ext_id }}"
+        disks:
+          - backing_info:
+              vm_disk:
+                disk_size_bytes: "{{ ce_node.storage.hyp_disk * 1024 * 1024 * 1024 }}"
+                storage_container:
+                  ext_id: "{{ cluster_container_id }}"
+            disk_address:
+              bus_type: SCSI
+              index: 1
+          - backing_info:
+              vm_disk:
+                disk_size_bytes: "{{ ce_node.storage.cvm_disk * 1024 * 1024 * 1024 }}"
+                storage_container:
+                  ext_id: "{{ cluster_container_id }}"
+            disk_address:
+              bus_type: SCSI
+              index: 2
+          - backing_info:
+              vm_disk:
+                disk_size_bytes: "{{ ce_node.storage.data_disk * 1024 * 1024 * 1024 }}"
+                storage_container:
+                  ext_id: "{{ cluster_container_id }}"
+            disk_address:
+              bus_type: SCSI
+              index: 3
+        wait: true
+      register: vm_info
+
+    - name: Power Up VM
+      nutanix.ncp.ntnx_vms_power_actions_v2:
+        ext_id: "{{ vm_info.response.ext_id }}"
+        state: power_on
+        wait: true
+
+    - name: Waiting for VM to be powered up and installer started
+      ansible.builtin.pause:
+        seconds: 300
+
+    - name: Gather updated info on the VM 
+      nutanix.ncp.ntnx_vms_info_v2:
+        ext_id: "{{ vm_info.response.ext_id }}"
+      register: powered_vm_info
+
+    - name: Gather Host IP info
+      nutanix.ncp.ntnx_hosts_info_v2:
+        ext_id: "{{ powered_vm_info.response.host.ext_id }}"
+        cluster_ext_id: "{{ powered_vm_info.response.cluster.ext_id }}"
+      register: running_host_info
+
+    - name: Identify running host
+      ansible.builtin.set_fact:
+        vm_host_ip: "{{ running_host_info.response.hypervisor.external_address.ipv4.value }}"
+
+    - name: Sending Installer Keystrokes - Page 1
+      ansible.builtin.shell:
+        cmd: sshpass -p {{ cluster_ahv_password }} ssh {{ cluster_ahv_username }}@{{ vm_host_ip }} -oStrictHostKeyChecking=no 'virsh send-key --domain {{ vm_info.response.ext_id }} --keycode {{ item }}'
+      loop: "{{ ce_gui_start + ce_ahv_keys  + key_tab + ce_cvm_keys + key_tab + ce_subnet_keys + key_tab + ce_dfgw_keys + key_tab + key_enter }}"
+
+    - name: Waiting for VM to be powered up and installer started
+      ansible.builtin.pause:
+        seconds: 30
+
+    - name: Sending Installer Keystrokes - Page 2
+      ansible.builtin.shell:
+        cmd: sshpass -p {{ cluster_ahv_password }} ssh {{ cluster_ahv_username }}@{{ vm_host_ip }} -oStrictHostKeyChecking=no 'virsh send-key --domain {{ vm_info.response.ext_id }} --keycode {{ item }}'
+      loop: "{{ ce_eula + key_tab + ['KEY_SPACE'] + key_tab + key_tab + key_enter }}"
+
+    - name: Waiting for CE installation to Complete
+      ansible.builtin.pause:
+        minutes: 30
+
+    - name: Ejecting CD
+      nutanix.ncp.ntnx_vms_cd_rom_iso_v2:
+        vm_ext_id: "{{ vm_info.response.ext_id }}"
+        ext_id: "{{ vm_info.response.cd_roms[0].ext_id }}"
+        backing_info:
+          data_source:
+            reference:
+              image_reference:
+                image_ext_id: "{{ image_ext_id }}"
+        state: absent
+        wait: true
+
+    - name: Reboot Following Installation
+      ansible.builtin.shell:
+        cmd: sshpass -p {{ cluster_ahv_password }} ssh {{ cluster_ahv_username }}@{{ vm_host_ip }} -oStrictHostKeyChecking=no 'virsh send-key --domain {{ vm_info.response.ext_id }} --keycode {{ item }}'
+      loop: "{{ ['KEY_Y'] + key_enter }}"

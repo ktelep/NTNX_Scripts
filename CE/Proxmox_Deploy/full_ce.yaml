@@ -5,9 +5,9 @@
      pve_api_user: root@pam
      pve_api_token_id: Ansible
      pve_api_token_secret: 4a0938a2-159e-4d4f-8074-a88a2b77d6e1 
-     ce_vm_name: CE-Test-VM5
-     cvm_ip_address: 192.168.2.155
-     ahv_ip_address: 192.168.2.154
+     ce_vm_name: CE-Test-1
+     cvm_ip_address: 192.168.2.101
+     ahv_ip_address: 192.168.2.201
      subnet_address: 255.255.255.0
      dfgw_ip_address: 192.168.2.1
      pve_storage_pool: SSDPool
@@ -33,7 +33,7 @@
        cpu: host
        ostype: l26
        ide: 
-         ide2: 'local:iso/phoenix-ce2.1-fraser-6.5.5.7-stable-fnd-5.6.1-x86_64.iso,media=cdrom'
+         ide2: 'local:iso/CE21_Final.iso,media=cdrom'
        boot: 'order=ide2;scsi0;net0'
        state: present
      register: vm_result
@@ -260,9 +260,10 @@
        api_token_secret: "{{ pve_api_token_secret }}"
        name: "{{ ce_vm_name }}"
        node: pve1
-       boot: 'order=scsi0;ide2;net0
+       boot: 'order=scsi0;ide2;net0'
 
    - name: Reboot System
      shell: |
        qm sendkey {{ vm_result.vmid }} Y
        qm sendkey {{ vm_result.vmid }} ret
+
