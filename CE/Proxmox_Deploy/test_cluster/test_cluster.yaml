@@ -1,4 +1,0 @@
-- import_playbook: node1.yaml
-- import_playbook: node2.yaml
-- import_playbook: node3.yaml
-

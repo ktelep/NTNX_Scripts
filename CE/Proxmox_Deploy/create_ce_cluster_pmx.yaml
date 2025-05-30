@@ -1,13 +1,13 @@
-- name: Create CE VM
+- name: Create CE VM (Tested with CE 2.1)
   hosts: pve
   vars: 
      pve_api_host: 192.168.2.25
      pve_api_user: root@pam
      pve_api_token_id: Ansible
      pve_api_token_secret: 4a0938a2-159e-4d4f-8074-a88a2b77d6e1 
-     ce_vm_name: CE-TestCluster-n1
-     cvm_ip_address: 192.168.2.155
-     ahv_ip_address: 192.168.2.154
+     ce_vm_name: CE-Test-1
+     cvm_ip_address: 192.168.2.101
+     ahv_ip_address: 192.168.2.201
      subnet_address: 255.255.255.0
      dfgw_ip_address: 192.168.2.1
      pve_storage_pool: SSDPool
@@ -33,14 +33,14 @@
        cpu: host
        ostype: l26
        ide: 
-         ide2: 'local:iso/phoenix-ce2.1-fraser-6.5.5.7-stable-fnd-5.6.1-x86_64.iso,media=cdrom'
+         ide2: 'local:iso/CE21_Final.iso,media=cdrom'
        boot: 'order=ide2;scsi0;net0'
        state: present
      register: vm_result
  
-   - name: Wait 10 seconds for VM to exist
+   - name: Wait 5 seconds for VM to exist
      ansible.builtin.wait_for:
-       timeout: 10
+       timeout: 5
 
    - name: Gather VM Configuration
      community.general.proxmox_vm_info:
@@ -158,18 +158,6 @@
    - name: Wait 5 minutes for VM to boot into the installer
      ansible.builtin.wait_for:
        timeout: 300
-
-   - name: Update boot order
-     proxmox_kvm:
-       api_host: "{{ pve_api_host }}"
-       api_user: "{{ pve_api_user }}"
-       api_token_id: "{{ pve_api_token_id }}"
-       api_token_secret: "{{ pve_api_token_secret }}"
-       name: "{{ ce_vm_name }}"
-       node: pve1
-       vmid: "{{ vm_result.vmid }}"
-       boot: 'order=scsi0;ide2;net0'
-       update: yes
   
    - name: Get IP Address
      shell: arp-scan -I vmbr0 -l | grep -i {{ macaddr }}  | awk '{print $1}'
@@ -264,13 +252,7 @@
      ansible.builtin.wait_for:
        timeout: 1800
 
-   - name: Reboot System
-     shell: |
-       qm sendkey {{ vm_result.vmid }} ret
-       qm sendkey {{ vm_result.vmid }} Y
-       qm sendkey {{ vm_result.vmid }} ret
-
-   - name: Reboot Node
+   - name: Update boot order
      proxmox_kvm:
        api_host: "{{ pve_api_host }}"
        api_user: "{{ pve_api_user }}"
@@ -278,4 +260,10 @@
        api_token_secret: "{{ pve_api_token_secret }}"
        name: "{{ ce_vm_name }}"
        node: pve1
-       state: restarted
+       boot: 'order=scsi0;ide2;net0'
+
+   - name: Reboot System
+     shell: |
+       qm sendkey {{ vm_result.vmid }} Y
+       qm sendkey {{ vm_result.vmid }} ret
+
