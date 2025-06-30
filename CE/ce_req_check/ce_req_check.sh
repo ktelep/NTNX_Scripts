@@ -173,6 +173,10 @@ if check_nvme_conflicts; then
     echo "--- OK ---"
 else
     echo "!!! Warning, there may be NVMe IOMMU conflicts !!!"
+    echo "Any device identified as a CVM or Data disk must not be in the"
+    echo "same IOMMU group as a device that is NOT being passed to the CVM"
+    echo "as this will cause PCI passthrough failure and the CVM will"
+    echo "not start"
 fi
 
 echo ""
