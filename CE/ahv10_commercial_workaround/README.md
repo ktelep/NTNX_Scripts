@@ -1,8 +1,14 @@
-# Fix for commercial CPU issue when booting VMs in AHV10+
+# Workaround for commercial CPU issue when booting VMs in AHV10+
 
 1. Log into AHV as root.   
 
-2. Edit the file /usr/libexec/qemu-kvm-frodo 
+2. Make a backup of the /usr/libexec/qemu-kvm-frodo file
+
+```bash
+    cp /usr/libexec/qemu-kvm-frodo /usr/libexec/qemu-kvm-frodo.bak
+```
+
+3. Edit the file /usr/libexec/qemu-kvm-frodo 
 
 First, locate the following line (should be line 635)
 
@@ -48,6 +54,8 @@ The script should look something like this:
     668     _, opts = parse_json_opt(argval)
     669
 ```
+
+4.  Copy this version of /usr/libexec/qemu-kvm-frodo to all of the AHV nodes in your CE cluster and place it in /usr/libexec replacing the existing one.
 
 You should now be able to start VMs.   This limits the maximum memory available for each VM to 128GB
 
