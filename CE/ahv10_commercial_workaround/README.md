@@ -13,7 +13,7 @@
 First, locate the following line (should be line 635)
 
 ```python
-    if arg not in ("-device", "-blockdev", "-cpu", "-uuid", "-boot"
+    if arg not in ("-device", "-blockdev", "-cpu", "-uuid", "-boot")
 ```
 
 And add the '-m' parameter to the end so it looks like this:
