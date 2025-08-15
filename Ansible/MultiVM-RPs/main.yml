@@ -1,0 +1,45 @@
+- name: Deploy Community Edition 2.1 on AHV
+  hosts: localhost
+  gather_facts: true
+  module_defaults:
+    group/nutanix.ncp.ntnx:
+      nutanix_host: <prism central ip>
+      nutanix_username: <prism central admin, this should be in a vault>
+      nutanix_password: <prism central password, this should be in a vault>
+      validate_certs: false
+  vars:
+    category_name: "PATCHING"
+    days_from_now: 2
+
+  tasks:
+    - name: Get our Patching category
+      nutanix.ncp.ntnx_categories_info_v2:
+        expand: associations
+        filter: "key eq '{{ category_name }}'"
+      register: patching_category_info
+
+    - name: Get our associated VMs
+      nutanix.ncp.ntnx_categories_info_v2:
+        expand: detailedAssociations
+        ext_id: "{{ patching_category_info.response[0].ext_id }}"
+      register: patching_category_vm_info
+
+    - name: Generate list of VM UUIDs from category associations
+      set_fact:
+        vm_resource_ids: >-
+          {{
+            patching_category_vm_info.response.detailed_associations
+            | selectattr('resource_type', 'equalto', 'VM')
+            | map(attribute='resource_id')
+            | list
+          }}
+
+    - name: Create Recovery Point for each VMs
+      nutanix.ncp.ntnx_recovery_points_v2:
+        state: present
+        name: "Patching_RP_{{ lookup('ansible.builtin.pipe', 'date +%Y%m%d_%H%M%S') }}"
+        expiration_time: "{{ '%Y-%m-%dT%H:%M:%SZ' | strftime((ansible_date_time.epoch | int) + (days_from_now * 24 * 60 * 60)) }}"
+        recovery_point_type: "CRASH_CONSISTENT"
+        vm_recovery_points:
+          - vm_ext_id: "{{ item }}"
+      loop: "{{ vm_resource_ids }}"
