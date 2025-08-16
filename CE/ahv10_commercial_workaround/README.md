@@ -29,7 +29,7 @@ Next, find the line that reads the following (it will be around line 662):
     _, opts = parse_json_opt(argval)
 ```
 
-Just above it place the following:  (whitespace matters!)
+Just above it place the following:  (whitespace matters! there aer only *two* spaces before the elif and 4 space before the new_argval)
 
 ```python
   elif arg == "-m":
@@ -38,7 +38,7 @@ Just above it place the following:  (whitespace matters!)
     qemu_argv.append(new_argval)
 ```
 
-The script should look something like this:
+The script should look something like this (see how the elifs line up?):
 
 ```python
     658
