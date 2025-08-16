@@ -1,5 +1,20 @@
 # Workaround for commercial CPU issue when booting VMs in AHV10+
 
+Scripted or Unscripted version must be performed on ALL hosts in the AHV cluster
+
+## Scripted Version ##
+1. scp the script in this repo (fix_ahv10_comm.sh) to each AHV host into the /tmp directory
+
+2. Log into AHV as root.   
+
+3. Execute the script
+
+```bash
+   bash /tmp/fix_ahv10_comm.sh
+```
+
+## Manual Version ##
+
 1. Log into AHV as root.   
 
 2. Make a backup of the /usr/libexec/qemu-kvm-frodo file
