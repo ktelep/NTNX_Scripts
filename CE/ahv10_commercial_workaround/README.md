@@ -28,13 +28,13 @@ Scripted or Unscripted version must be performed on ALL hosts in the AHV cluster
 First, locate the following line (should be line 635)
 
 ```python
-    if arg not in ("-device", "-blockdev", "-cpu", "-uuid", "-boot")
+    if arg not in ("-device", "-blockdev", "-cpu", "-uuid", "-boot"):
 ```
 
 And add the '-m' parameter to the end so it looks like this:
 
 ```python
-    if arg not in ("-device", "-blockdev", "-cpu", "-uuid", "-boot", "-m")
+    if arg not in ("-device", "-blockdev", "-cpu", "-uuid", "-boot", "-m"):
 ```
 
 Next, find the line that reads the following (it will be around line 662):
