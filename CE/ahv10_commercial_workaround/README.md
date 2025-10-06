@@ -72,6 +72,12 @@ The script should look something like this (see how the elifs line up?):
 
 4.  Copy this version of /usr/libexec/qemu-kvm-frodo to all of the AHV nodes in your CE cluster and place it in /usr/libexec replacing the existing one.
 
+5.  On each AHV node run this as root to fix any SELinux contexts that may have gotten changed
+
+```bash
+   restorecon /usr/libexec/qemu-kvm-frodo
+```
+
 You should now be able to start VMs.   This limits the maximum memory available for each VM to 128GB
 
 Many thanks to SteveCooperArch in the .Next forums for identifying using this script as a quick and dirty workaround.   Note this IS resolved in an upcoming release of AHV.   We have no plans to stop supporting Commercial CPUs!
