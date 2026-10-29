@@ -1,62 +1,29 @@
-﻿param(
-    [string]$CategoryName,
-    [string]$CategoryKey
+param(
+    [Parameter(Mandatory = $true)][string]$CategoryName,
+    [Parameter(Mandatory = $true)][string]$CategoryKey,
+    [Parameter(Mandatory = $true)][string]$PrismCentralUrl,
+    [Parameter(Mandatory = $true)][PSCredential]$Credential
 )
 
-# Set Prism Central credentials
-# --------------------------------------------------
-$PrismCentralURL = "https://192.168.1.205:9440"
-$UserName = "admin"
-$Password = "password"
+. (Join-Path $PSScriptRoot 'CategoryCommon.ps1')
 
+$headers = New-PCHeaders -Credential $Credential
+$pcUrl = $PrismCentralUrl.TrimEnd('/')
+$category = Get-PCV4Category -PCUrl $pcUrl -Headers $headers -Key $CategoryName -Value $CategoryKey
 
-[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Ssl3, [Net.SecurityProtocolType]::Tls, [Net.SecurityProtocolType]::Tls11, [Net.SecurityProtocolType]::Tls12
-
-
-# Check if VMName and CategoryName are provided
-# --------------------------------------------------
-if (-not $CategoryKey -or -not $CategoryName) {
-    Write-Host "Please provide the Category Name and Category Key"
-    exit
+if (-not $category) {
+    throw "Category '$CategoryName`:$CategoryKey' was not found."
 }
 
-# Authenticate with Prism Central
-# --------------------------------------------------
-$base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $UserName,$Password)))
-$headers = @{
-    
-    Authorization=("Basic {0}" -f $base64AuthInfo);
-    "Content-Type"="application/json";
-    "Accept"="application/json"
+$vmsUrl = "$pcUrl/api/vmm/v4.3/ahv/config/vms"
+$vms = Get-PCV4Collection -Uri $vmsUrl -Headers $headers
+$matchedVms = @($vms | Where-Object {
+    @($_.categories | Where-Object { $_.extId -eq $category.extId }).Count -gt 0
+})
+
+if ($matchedVms.Count -eq 0) {
+    Write-Host "No VMs are assigned category '$CategoryName`:$CategoryKey'."
+    return
 }
 
-# Check that our Category actually exists
-# --------------------------------------------------
-$CatURL = "$PrismCentralURL/api/nutanix/v3/categories/$CategoryName/$CategoryKey"
-$CatResponse = try { Invoke-WebRequest -Uri $CatURL -Headers $headers -method Get
-} catch [System.Net.WebException] {
-    Write-Host "Category Name and Key not found, check spelling and capitalization"
-    exit
-}
-
-$CategoryRequest = @"
-{
-    "usage_type":"APPLIED_TO",
-    "group_member_count":1000,
-    "category_filter": {
-        "kind_list": [ "vm" ],
-        "params": {
-            "$CategoryName" : ["$CategoryKey"]
-        }
-    }
-}
-"@
-
-
-$QURL = "$PrismCentralURL/api/nutanix/v3/category/query"
-
-$VMResponse = Invoke-RestMethod -Uri $QURL -Headers $headers -Method Post -Body $CategoryRequest
-$VMResponse.results[0].kind_reference_list | Write-Output | foreach-object {
-    Write-Host $_.name
-}
+$matchedVms | ForEach-Object { Write-Output $_.name }
